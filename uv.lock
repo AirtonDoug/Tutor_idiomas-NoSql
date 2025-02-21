@@ -38,7 +38,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -271,6 +271,20 @@ wheels = [
 ]
 
 [[package]]
+name = "odmantic"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "motor" },
+    { name = "pydantic" },
+    { name = "pymongo" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d6/cf/77a4fccc2810bd5cbab5df36edb209e0e91b4bab390f0e969d67c17741bb/odmantic-1.0.2.tar.gz", hash = "sha256:bbd0d46bc920e0e6d966d9f3add7396bc92377d2c73860d071d5ca8102f57235", size = 140263 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/2d/c8ccdb60ccd873bff3dcabfd46fc7cf24fe09150a31446f6b3b947322fe2/odmantic-1.0.2-py3-none-any.whl", hash = "sha256:0475c763687624b70ba4d52266a7d0bdfb74dda7ec40162669334e9d41c06049", size = 36891 },
+]
+
+[[package]]
 name = "pydantic"
 version = "2.10.6"
 source = { registry = "https://pypi.org/simple" }
@@ -478,6 +492,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "motor" },
+    { name = "odmantic" },
     { name = "pydantic" },
     { name = "python-dotenv" },
 ]
@@ -486,6 +501,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.8" },
     { name = "motor", specifier = ">=3.7.0" },
+    { name = "odmantic", specifier = ">=1.0.2" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
 ]

@@ -1,46 +1,63 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
-from bson import ObjectId
-from models.turma import Turma, TurmaInDB
-from database import get_database
+from fastapi import APIRouter, HTTPException, Query
+from database import get_engine
+from models.modelos import Turma, Aluno
+from odmantic import ObjectId
+from datetime import datetime
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/turmas",  # Prefix for all routes
+    tags=["Turmas"],   # Tag for automatic documentation
+)
 
-# Create a new turma
-@router.post("/", response_model=TurmaInDB)
-async def create_turma(turma: Turma, db=Depends(get_database)):
-    turma_dict = turma.dict()
-    result = await db.turmas.insert_one(turma_dict)
-    turma_dict['id'] = str(result.inserted_id)
-    return TurmaInDB(**turma_dict)
+engine = get_engine()
 
-# Read all turmas
-@router.get("/", response_model=List[TurmaInDB])
-async def read_turmas(db=Depends(get_database)):
-    turmas = await db.turmas.find().to_list(1000)
-    return [TurmaInDB(**turma, id=str(turma['_id'])) for turma in turmas]
+# Turmas
+@router.post("/", response_model=Turma)
+async def create_turma(turma: Turma):
+    await engine.save(turma)
+    return turma
 
-# Read a single turma by ID
-@router.get("/{turma_id}", response_model=TurmaInDB)
-async def read_turma(turma_id: str, db=Depends(get_database)):
-    turma = await db.turmas.find_one({"_id": ObjectId(turma_id)})
-    if turma is None:
+@router.get("/", response_model=list[Turma])
+async def read_turmas(offset: int = 0, limit: int = Query(default=10, le=100)):
+    turmas = await engine.find(Turma, skip=offset, limit=limit)
+    return turmas
+
+@router.get("/{turma_id}", response_model=Turma)
+async def read_turma(turma_id: str):
+    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    if not turma:
         raise HTTPException(status_code=404, detail="Turma not found")
-    return TurmaInDB(**turma, id=str(turma['_id']))
+    return turma
 
-# Update a turma by ID
-@router.put("/{turma_id}", response_model=TurmaInDB)
-async def update_turma(turma_id: str, turma: Turma, db=Depends(get_database)):
-    result = await db.turmas.update_one({"_id": ObjectId(turma_id)}, {"$set": turma.dict()})
-    if result.matched_count == 0:
+@router.put("/{turma_id}", response_model=Turma)
+async def update_turma(turma_id: str, turma_data: dict):
+    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    if not turma:
         raise HTTPException(status_code=404, detail="Turma not found")
-    updated_turma = await db.turmas.find_one({"_id": ObjectId(turma_id)})
-    return TurmaInDB(**updated_turma, id=str(updated_turma['_id']))
+    for key, value in turma_data.items():
+        setattr(turma, key, value)
+    await engine.save(turma)
+    return turma
 
-# Delete a turma by ID
-@router.delete("/{turma_id}", response_model=dict)
-async def delete_turma(turma_id: str, db=Depends(get_database)):
-    result = await db.turmas.delete_one({"_id": ObjectId(turma_id)})
-    if result.deleted_count == 0:
+@router.get("/nome/{nome_turma}", response_model=dict)
+async def get_tutor_and_nivel_by_nome_turma(nome_turma: str):
+    turma = await engine.find_one(Turma, Turma.nome == nome_turma)
+    if not turma:
         raise HTTPException(status_code=404, detail="Turma not found")
-    return {"message": "Turma deleted successfully"}
+    return {"tutor": turma.tutor.nome, "lingua": turma.tutor.lingua, "nivel": turma.nivel}
+
+@router.get("/{turma_id}/alunos/quantidade", response_model=dict)
+async def get_total_alunos_for_turma(turma_id: str):
+    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma not found")
+    total_alunos = len(turma.alunos)
+    return {"total_alunos": total_alunos}
+
+@router.delete("/{turma_id}")
+async def delete_turma(turma_id: str):
+    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma not found")
+    await engine.delete(turma)
+    return {"ok": True}

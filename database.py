@@ -1,10 +1,19 @@
-import motor.motor_asyncio
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+from odmantic import AIOEngine
+import os
 
-uri = "mongodb+srv://airton:airton@tutor-idiomas.mf0ub.mongodb.net/?retryWrites=true&w=majority&appName=Tutor-Idiomas"
+# Carregar variáveis do arquivo .env
+load_dotenv()
 
-# Create a new client and connect to the server
-client = motor.motor_asyncio.AsyncIOMotorClient(uri)
+# MongoDB connection
+DATABASE_URL = os.getenv("DATABASE_URL")
+client = AsyncIOMotorClient(DATABASE_URL)
+db = client.airton
+engine = AIOEngine(client=client, database="airton")
 
-# Helper function to get the database
-def get_database():
-    return client['tutor_idiomas']
+
+
+
+def get_engine() -> AIOEngine:
+    return engine

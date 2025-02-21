@@ -1,46 +1,79 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
-from bson import ObjectId
-from models.aluno import Aluno, AlunoInDB
-from database import get_database
+from fastapi import APIRouter, HTTPException, Query
+from database import get_engine
+from models.modelos import Aluno, Turma
+from odmantic import ObjectId
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/alunos",  # Prefix for all routes
+    tags=["Alunos"],   # Tag for automatic documentation
+)
 
-# Create a new aluno
-@router.post("/", response_model=AlunoInDB)
-async def create_aluno(aluno: Aluno, db=Depends(get_database)):
-    aluno_dict = aluno.dict()
-    result = await db.alunos.insert_one(aluno_dict)
-    aluno_dict['id'] = str(result.inserted_id)
-    return AlunoInDB(**aluno_dict)
+engine = get_engine()
 
-# Read all alunos
-@router.get("/", response_model=List[AlunoInDB])
-async def read_alunos(db=Depends(get_database)):
-    alunos = await db.alunos.find().to_list(1000)
-    return [AlunoInDB(**aluno, id=str(aluno['_id'])) for aluno in alunos]
+@router.post("/{turma_id}/alunos/", response_model=Aluno)
+async def create_aluno_for_turma(turma_id: str, aluno: Aluno):
+    # Verifica se o aluno já existe pelo email
+    existing_aluno = await engine.find_one(Aluno, Aluno.email == aluno.email)
+    if existing_aluno:
+        raise HTTPException(status_code=400, detail="Aluno com esse email ja cadastrado")
 
-# Read a single aluno by ID
-@router.get("/{aluno_id}", response_model=AlunoInDB)
-async def read_aluno(aluno_id: str, db=Depends(get_database)):
-    aluno = await db.alunos.find_one({"_id": ObjectId(aluno_id)})
-    if aluno is None:
+    # Busca a turma pelo ID
+    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    if not turma:
+        raise HTTPException(status_code=404, detail="Turma not found")
+
+    await engine.save(aluno)
+    return aluno
+
+@router.get("/{turma_id}/alunos/", response_model=list[Aluno])
+async def read_alunos_for_turma(turma_id: str, offset: int = 0, limit: int = Query(default=10, le=100)):
+    alunos = await engine.find(Aluno, Aluno.turma == ObjectId(turma_id), skip=offset, limit=limit)
+    return alunos
+
+@router.get("/aluno/{aluno_id}", response_model=Aluno)
+async def read_aluno_by_id(aluno_id: str):
+    aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
+    if not aluno:
         raise HTTPException(status_code=404, detail="Aluno not found")
-    return AlunoInDB(**aluno, id=str(aluno['_id']))
+    return aluno
 
-# Update an aluno by ID
-@router.put("/{aluno_id}", response_model=AlunoInDB)
-async def update_aluno(aluno_id: str, aluno: Aluno, db=Depends(get_database)):
-    result = await db.alunos.update_one({"_id": ObjectId(aluno_id)}, {"$set": aluno.dict()})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Aluno not found")
-    updated_aluno = await db.alunos.find_one({"_id": ObjectId(aluno_id)})
-    return AlunoInDB(**updated_aluno, id=str(updated_aluno['_id']))
+@router.get("/alunos/busca", response_model=list[Aluno])
+async def search_alunos(texto: str):
+    alunos = await engine.find(Aluno, Aluno.nome.match(texto))
+    if not alunos:
+        raise HTTPException(status_code=404, detail="No alunos found")
+    return alunos
 
-# Delete an aluno by ID
-@router.delete("/{aluno_id}", response_model=dict)
-async def delete_aluno(aluno_id: str, db=Depends(get_database)):
-    result = await db.alunos.delete_one({"_id": ObjectId(aluno_id)})
-    if result.deleted_count == 0:
+@router.put("/{turma_id}/alunos/{aluno_id}", response_model=Aluno)
+async def update_aluno_for_turma(turma_id: str, aluno_id: str, aluno_data: dict):
+    aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
+    if not aluno or aluno.turma != ObjectId(turma_id):
         raise HTTPException(status_code=404, detail="Aluno not found")
-    return {"message": "Aluno deleted successfully"}
+    for key, value in aluno_data.items():
+        setattr(aluno, key, value)
+    await engine.save(aluno)
+    return aluno
+
+@router.delete("/{turma_id}/alunos/{aluno_id}")
+async def delete_aluno_for_turma(turma_id: str, aluno_id: str):
+    aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
+    if not aluno or aluno.turma != ObjectId(turma_id):
+        raise HTTPException(status_code=404, detail="Aluno not found")
+    await engine.delete(aluno)
+    return {"ok": True}
+
+@router.put("/{aluno_id}/trocar-turma", response_model=Aluno)
+async def trocar_turma_de_aluno(aluno_id: str, nova_turma_id: str):
+    aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
+    if not aluno:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+
+    nova_turma = await engine.find_one(Turma, Turma.id == ObjectId(nova_turma_id))
+    if not nova_turma:
+        raise HTTPException(status_code=404, detail="Nova turma não encontrada")
+
+    # Atualiza o tutor do aluno com base na nova turma
+    aluno.tutor = nova_turma.tutor
+    aluno.turma = ObjectId(nova_turma_id)
+    await engine.save(aluno)
+    return aluno
