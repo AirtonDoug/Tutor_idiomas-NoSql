@@ -25,5 +25,5 @@ class Turma(Model):
     nome: str
     nivel: str
     conversation: List[Conversation] = []
-    tutor: Tutor = Reference()
+    tutor_id: Optional[ObjectId] = None
     aluno: List[Aluno] = []
