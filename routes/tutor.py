@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException, Query
 from database import get_engine
 from models.modelos import Tutor, Turma, Aluno
 from odmantic import ObjectId
+from typing import List
 
 router = APIRouter(
-    prefix="/tutors",  # Prefix for all routes
+    prefix="/tutor",  # Prefix for all routes
     tags=["Tutors"],   # Tag for automatic documentation
 )
 
@@ -23,6 +24,9 @@ async def create_tutor(tutor: Tutor):
 async def read_tutors(offset: int = 0, limit: int = Query(default=10, le=100)):
     tutors = await engine.find(Tutor, skip=offset, limit=limit)
     return tutors
+
+
+
 
 @router.get("/{tutor_id}", response_model=Tutor)
 async def read_tutor(tutor_id: str):
@@ -61,7 +65,7 @@ async def get_turmas_por_tutor(tutor_id: str):
 # Obter todos os alunos de um tutor específico
 @router.get("/{tutor_id}/alunos", response_model=list[Aluno])
 async def get_alunos_por_tutor(tutor_id: str):
-    alunos = await engine.find(Aluno, Aluno.tutor == ObjectId(tutor_id))
+    alunos = await engine.find(Aluno, Aluno.tutor_id == ObjectId(tutor_id))
     if not alunos:
         raise HTTPException(status_code=404, detail="No alunos found for this tutor")
     return alunos

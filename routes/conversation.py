@@ -5,7 +5,7 @@ from odmantic import ObjectId
 from datetime import datetime
 
 router = APIRouter(
-    prefix="/conversations",  # Prefix for all routes
+    prefix="/conversation",  # Prefix for all routes
     tags=["Conversations"],   # Tag for automatic documentation
 )
 
