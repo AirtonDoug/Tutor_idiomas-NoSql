@@ -3,7 +3,7 @@ from database import get_engine
 from models.modelos import Turma, Aluno
 from odmantic import ObjectId
 from datetime import datetime
-
+from typing import List
 router = APIRouter(
     prefix="/turma",  # Prefix for all routes
     tags=["Turmas"],   # Tag for automatic documentation
@@ -46,7 +46,7 @@ async def get_tutor_and_nivel_by_nome_turma(nome_turma: str):
         raise HTTPException(status_code=404, detail="Turma not found")
     return {"tutor": turma.tutor.nome, "lingua": turma.tutor.lingua, "nivel": turma.nivel}
 
-@router.get("/{turma_id}/alunos/quantidade", response_model=dict)
+@router.get("/{turma_id}/aluno/quantidade", response_model=dict)
 async def get_total_alunos_for_turma(turma_id: str):
     turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
     if not turma:

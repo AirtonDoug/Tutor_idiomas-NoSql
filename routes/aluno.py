@@ -43,14 +43,14 @@ async def read_aluno_by_id(aluno_id: str):
         raise HTTPException(status_code=404, detail="Aluno not found")
     return aluno
 
-@router.get("/alunos/busca", response_model=list[Aluno])
+@router.get("/aluno/busca", response_model=list[Aluno])
 async def search_alunos(texto: str):
     alunos = await engine.find(Aluno, Aluno.nome.match(texto))
     if not alunos:
         raise HTTPException(status_code=404, detail="No alunos found")
     return alunos
 
-@router.put("/{turma_id}/alunos/{aluno_id}", response_model=Aluno)
+@router.put("/{turma_id}/aluno/{aluno_id}", response_model=Aluno)
 async def update_aluno_for_turma(turma_id: str, aluno_id: str, aluno_data: dict):
     aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
     if not aluno or aluno.turma_id != ObjectId(turma_id):
@@ -60,7 +60,7 @@ async def update_aluno_for_turma(turma_id: str, aluno_id: str, aluno_data: dict)
     await engine.save(aluno)
     return aluno
 
-@router.delete("/{turma_id}/alunos/{aluno_id}")
+@router.delete("/{turma_id}/aluno/{aluno_id}")
 async def delete_aluno_for_turma(turma_id: str, aluno_id: str):
     aluno = await engine.find_one(Aluno, Aluno.id == ObjectId(aluno_id))
     if not aluno or aluno.turma_id != ObjectId(turma_id):
@@ -81,5 +81,7 @@ async def trocar_turma_de_aluno(aluno_id: str, nova_turma_id: str):
     # Atualiza o tutor do aluno com base na nova turma
     aluno.tutor = nova_turma.tutor
     aluno.turma_id = ObjectId(nova_turma_id)
+    nova_turma.alunos.append(aluno)
+    await engine.save(nova_turma)
     await engine.save(aluno)
     return aluno

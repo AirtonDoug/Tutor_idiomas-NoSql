@@ -11,7 +11,7 @@ router = APIRouter(
 
 engine = get_engine()
 
-@router.post("/{turma_id}/conversations/", response_model=Conversation)
+@router.post("/{turma_id}/conversation/", response_model=Conversation)
 async def create_conversation_for_turma(turma_id: str, conversation: Conversation):
     existing_conversation = await engine.find_one(Conversation, Conversation.name == conversation.name)
     if existing_conversation:
@@ -25,7 +25,7 @@ async def create_conversation_for_turma(turma_id: str, conversation: Conversatio
     await engine.save(turma)
     return conversation
 
-@router.get("/{turma_id}/conversations/", response_model=list[Conversation])
+@router.get("/{turma_id}/conversation/", response_model=list[Conversation])
 async def read_conversations_for_turma(turma_id: str):
     turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
     if not turma:
