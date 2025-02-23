@@ -46,13 +46,57 @@ async def get_tutor_and_nivel_by_nome_turma(nome_turma: str):
         raise HTTPException(status_code=404, detail="Turma not found")
     return {"tutor": turma.tutor.nome, "lingua": turma.tutor.lingua, "nivel": turma.nivel}
 
-@router.get("/{turma_id}/aluno/quantidade", response_model=dict)
-async def get_total_alunos_for_turma(turma_id: str):
-    turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
-    if not turma:
-        raise HTTPException(status_code=404, detail="Turma not found")
-    total_alunos = len(turma.alunos)
-    return {"total_alunos": total_alunos}
+#@router.get("/{turma_id}/aluno/quantidade", response_model=dict)
+#async def get_total_alunos_for_turma(turma_id: str):
+    #turma = await engine.find_one(Turma, Turma.id == ObjectId(turma_id))
+    #if not turma:
+        #raise HTTPException(status_code=404, detail="Turma not found")
+    #total_alunos = len(turma.aluno)
+    #return {"total_alunos": total_alunos}
+
+@router.get("/aluno/por_turma")
+async def get_alunos_por_turma():
+    """ Retorna a quantidade de alunos por turma
+        Faz um lookup na coleção de aluno para contar a quantidade de alunos por turma
+        mostra em ordem crescente por nome da turma nivel e total de alunos
+    """
+    collection = engine.get_collection(Turma)
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "aluno",
+                "localField": "_id",
+                "foreignField": "turma_id",
+                "as": "aluno"
+            }
+        },
+        {
+            "$addFields": {
+                "total_alunos": {"$size": "$aluno"}
+            }
+        },
+        {
+            "$project": {
+                "_id": {"$toString": "$_id"},
+                "nome": 1,
+                "nivel": 1,
+                "total_alunos": 1
+            }
+        }
+    ]
+    turmas = await collection.aggregate(pipeline).to_list(length=None)
+    
+    turmas =[
+    {
+        "id": turma["_id"],
+        "nome": turma["nome"],
+        "nivel": turma["nivel"],
+        "total_alunos": turma["total_alunos"]
+    } 
+    for turma in turmas
+    ]
+    
+    return turmas
 
 @router.delete("/{turma_id}")
 async def delete_turma(turma_id: str):
