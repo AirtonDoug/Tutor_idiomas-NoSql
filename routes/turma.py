@@ -1,11 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
 from database import get_engine
-from models.modelos import Turma,Conversation, Tutor
+from models.modelos import Turma,Conversation, Tutor, TutorEmbed
 from odmantic import ObjectId
 from datetime import datetime
 from typing import List
-from pydantic import BaseModel
-
 router = APIRouter(
     prefix="/turma",  # Prefix for all routes
     tags=["Turmas"],   # Tag for automatic documentation
@@ -13,25 +11,29 @@ router = APIRouter(
 
 engine = get_engine()
 
-# Criar classe para receber os dados da requisição
-class TurmaCreate(BaseModel):
-    nome: str
-    nivel: str
-    tutor_id: str
-
 # Turmas
 @router.post("/", response_model=Turma)
-async def create_turma(turma_data: TurmaCreate):
+async def create_turma(nome: str, nivel: str, tutor_id: str):
     # Busca o tutor pelo ID
-    tutor = await engine.find_one(Tutor, Tutor.id == ObjectId(turma_data.tutor_id))
+    tutor = await engine.find_one(Tutor, Tutor.id == ObjectId(tutor_id))
     if not tutor:
         raise HTTPException(status_code=404, detail="Tutor não encontrado")
     
-    # Cria a nova turma com o tutor encontrado
+    # Cria o TutorEmbed com os dados do tutor
+    tutor_embed = TutorEmbed(
+        nome=tutor.nome,
+        email=tutor.email,
+        lingua=tutor.lingua,
+        id=tutor.id
+    )
+    
+    # Cria a nova turma
     turma = Turma(
-        nome=turma_data.nome,
-        nivel=turma_data.nivel,
-        tutor=tutor
+        nome=nome,
+        nivel=nivel,
+        tutor=tutor_embed,
+        aluno=[],
+        conversation=[]
     )
     
     await engine.save(turma)

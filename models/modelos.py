@@ -1,7 +1,13 @@
-from odmantic import Model, Reference, ObjectId
+from odmantic import Model, Reference, ObjectId, EmbeddedModel
 from typing import Optional, List
 from datetime import datetime
 
+
+class TutorEmbed(EmbeddedModel):
+    nome: str
+    email: str
+    lingua: str
+    id: ObjectId
 
 class Tutor(Model):
     nome: str
@@ -13,8 +19,8 @@ class Aluno(Model):
     email: str
     senha: str
     nickname: str
-    tutor_id: Optional[ObjectId] = None  # Mudamos para tutor_id
-    turma_id: Optional[ObjectId] = None  # Mudamos para turma_id
+    tutor_id: Optional[ObjectId] = None  
+    turma_id: Optional[ObjectId] = None  
 
 class Conversation(Model):
     nome: str
@@ -25,5 +31,5 @@ class Turma(Model):
     nome: str
     nivel: str
     conversation: List[Conversation] = []
-    tutor_id: Optional[ObjectId] = None
+    tutor: TutorEmbed  # Usando o modelo embutido
     aluno: List[Aluno] = []
